@@ -7,8 +7,11 @@ OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
 CFLAGS := -O0 -g 	# pas d'optimisation, ajouter les symboles de debug
 CFLAGS += -Wall		# afficher tous les warnings
 CFLAGS += -Iinc/ 	# headers .h dans inc/
+CFLAGS += -fopenmp  # utiliser le framework openmp
 
-LDFLAGS := -lm
+# LDFLAGS := -lm
+LDFLAGS := -lm -lpthread -fopenmp
+
 
 CC := gcc
 LD := gcc

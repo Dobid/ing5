@@ -30,7 +30,7 @@ int main(int argc, char **argv)
   }
   else
   {
-    test_image_gradient("img/New_York_City_skyline.pgm");  
+    test_image_gradient("img/New_York.pgm");  
   }
     
   printf("End.\n");
