@@ -3,6 +3,7 @@
 #include "pixel.h"
 #include <math.h>
 #include <assert.h>
+#include <omp.h>
 
 static const float sobel_x[3][3] =
 {
@@ -33,6 +34,9 @@ void image_gradient(image_t *self, image_t *out)
     float h, s, v;
     rgb_t rgb;
 
+    omp_set_num_threads(6);
+
+    #pragma omp parallel for private(y)
     /* For all pixels of the input image */
     for (y = 0; y < self->height - 2; ++y)
     {
