@@ -46,7 +46,7 @@ int main(int argc, char **argv)
   }
   else
   {
-    test_image_gradient("img/New_York.pgm", nb_threads);  
+    test_image_gradient("img/Brittany.pgm", nb_threads);  
   }
     
   printf("End.\n");
