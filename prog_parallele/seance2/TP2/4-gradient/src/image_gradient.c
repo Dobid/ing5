@@ -31,7 +31,7 @@ void image_gradient(image_t *self, image_t *out, int nb_threads)
     uint8_t c;
     int kx, ky;
     float gx, gy, mag, angle;
-    float h, s, v, abc;
+    float h, s, v;
     rgb_t rgb;
 
     // On indique le nombre dethreads a créer, ce nombre est récupéré dans les arg du main
