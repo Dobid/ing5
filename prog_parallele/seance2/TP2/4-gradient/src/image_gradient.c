@@ -34,9 +34,7 @@ void image_gradient(image_t *self, image_t *out)
     float h, s, v;
     rgb_t rgb;
 
-    omp_set_num_threads(6);
 
-    #pragma omp parallel for private(y)
     /* For all pixels of the input image */
     for (y = 0; y < self->height - 2; ++y)
     {
