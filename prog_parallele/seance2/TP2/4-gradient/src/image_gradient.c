@@ -19,7 +19,7 @@ static const float sobel_y[3][3] =
     { .125,  .250,  .125}
 };
 
-void image_gradient(image_t *self, image_t *out)
+void image_gradient(image_t *self, image_t *out, int nb_threads)
 {
     /* input image should be a 8-bit grayscale image */
     assert(out->width >= self->width - 2);
@@ -34,15 +34,20 @@ void image_gradient(image_t *self, image_t *out)
     float h, s, v;
     rgb_t rgb;
 
+    // On indique le nombre dethreads a créer, ce nombre est récupéré dans les arg du main
+    omp_set_num_threads(nb_threads);
 
     /* For all pixels of the input image */
     for (y = 0; y < self->height - 2; ++y)
     {
+        // On parallélise la prochaine boucle for en appliquant ue reduction clause sur gx et gy qui sont shared
+        #pragma omp parallel for private(x,mag,angle,h,s,v,rgb,ky,kx,c), reduction(+:gx,gy)
         for (x = 0; x < self->width - 2; ++x)
         {
             /* Compute gradient in x and y direction: */
             gx = 0;
             gy = 0;
+
             for (ky = 0; ky < 3; ++ky)
             {
                 for (kx = 0; kx < 3; ++kx)
