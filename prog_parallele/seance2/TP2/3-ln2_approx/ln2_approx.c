@@ -1,17 +1,28 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <omp.h>
 
 #define N_MAX 1000000000LL
 
-int main (void)
+int main (int argc, char **argv)
 {
+    int nb_threads;
+    if(argv[1] == NULL)
+    {
+        perror("No arguments passed when launching the program \n Default number of threads will be : 10 \n");
+        nb_threads = 10;
+    }
+    else
+    {
+        nb_threads = atoi(argv[1]);
+    }
+
     double sum = 0.0;
     long long n;
-    // int nb_threads;
-    // printf("nb de threads ? : \n");
-    // scanf("%d", &nb_threads);
-    // omp_set_num_threads(nb_threads);
-    // printf("Nombre de threads : %d\n", nb_threads);
+    
+    // On indique le nombre de threads à créer par openmp
+    omp_set_num_threads(nb_threads);
+    printf("Nombre de threads : %d\n", nb_threads);
 
     #pragma omp parallel for private(n), reduction(+:sum)
     for (n = N_MAX; n > 0; n--)

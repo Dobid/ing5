@@ -3,6 +3,6 @@
 
 #include "image.h"
 
-void image_gradient(image_t *self, image_t *out);
+void image_gradient(image_t *self, image_t *out, int nb_threads);
 
 #endif
