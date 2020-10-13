@@ -41,7 +41,7 @@ void image_gradient(image_t *self, image_t *out, int nb_threads)
     for (y = 0; y < self->height - 2; ++y)
     {
         // On parallélise la prochaine boucle for en appliquant ue reduction clause sur gx et gy qui sont shared
-        #pragma omp parallel for private(x,mag,angle,h,s,v,rgb,ky,kx,c), reduction(+:gx,gy)
+        #pragma omp parallel for private(x,mag,angle,h,s,v,rgb,ky,kx,c,gx,gy)
         for (x = 0; x < self->width - 2; ++x)
         {
             /* Compute gradient in x and y direction: */
