@@ -3,3 +3,8 @@
 **/4-gradient/build/*
 
 **/TP2/4-gradient/out/*
+
+**/TP3/1-sine_sync/*.o
+**/TP3/2-sine_multi_writers_sync/*.o
+**/TP3/3-sine_full_sync/*.o
+**/TP3/4-consume_sync/*.o
