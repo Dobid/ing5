@@ -1,5 +1,10 @@
-prog_parallele/seance2/TP2/4-gradient/main
+**/4-gradient/main
 
-prog_parallele/seance2/TP2/4-gradient/build/
+**/4-gradient/build/*
 
-prog_parallele/seance2/TP2/4-gradient/out/
+**/TP2/4-gradient/out/*
+
+**/TP3/1-sine_sync/*.o
+**/TP3/2-sine_multi_writers_sync/*.o
+**/TP3/3-sine_full_sync/*.o
+**/TP3/4-consume_sync/*.o
