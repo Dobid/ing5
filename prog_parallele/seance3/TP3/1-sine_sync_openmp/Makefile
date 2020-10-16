@@ -20,9 +20,10 @@ THREAD_NUM = 1 2 3 4 5 6 7 8 9 10
 CFLAGS := -O0 -g 	# pas d'optimisation, ajouter les symboles de debug
 CFLAGS += -Iinc/ 	# headers .h dans inc/
 CFLAGS += -Wall		# afficher tous les warnings
+CFLAGS += -fopenmp  # utiliser le framework openmp
 
 # Notez ici les param�tres de liaison (librairies n�cessaires)
-LDFLAGS := -lm -lpthread	
+LDFLAGS := -lm -lpthread -fopenmp
 
 # Commandes utilis�es pour compiler & linker
 CC := gcc
