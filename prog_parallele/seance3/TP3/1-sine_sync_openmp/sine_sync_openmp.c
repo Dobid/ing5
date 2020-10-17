@@ -48,12 +48,9 @@ int main (int argc, char **argv)
         {
             for (nb_write = 0; nb_write < N_MAX; ++nb_write)
             {
-                #pragma omp critical
-                {
-                    omp_set_lock(&lock1);
-                    fprintf(file, "%d\t%d\n", nb_write, sine_value);
-                    omp_unset_lock(&lock2);
-                }   
+                omp_set_lock(&lock1);
+                fprintf(file, "%d\t%d\n", nb_write, sine_value);
+                omp_unset_lock(&lock2); 
             }
         }
     }
