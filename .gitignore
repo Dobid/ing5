@@ -9,7 +9,7 @@
 **/TP3/3-sine_full_sync/*.o
 **/TP3/4-consume_sync/*.o
 
-**/TP3/1-sine_sync/sine_sync
+**/TP3/1-sine_sync_openmp/sine_sync_openmp
 
 **/TP3/1-sine_sync_pthreads/sine_sync_pthreads
 
