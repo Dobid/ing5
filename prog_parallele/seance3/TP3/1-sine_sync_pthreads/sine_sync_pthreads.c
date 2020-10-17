@@ -4,7 +4,7 @@
 #include <math.h>
 #include <semaphore.h>
 
-#define N_MAX 1000
+#define N_MAX 10000000LL
 #define PI 3.14159265
 
 int sine_value = 0;
@@ -86,9 +86,6 @@ int main (int argc, char **argv)
         perror("Couldn't initialise mutex2\n");
     }
     
-    pthread_create(&my_threads[0], NULL, sine_writer, NULL);
-    pthread_create(&my_threads[1], NULL, sine_producer, NULL);
-
     // On lock pour forcer le programme à commencer par le thread 1
     int ret1 = pthread_mutex_lock(&mutex1);
     if(ret1 != 0)
@@ -100,6 +97,9 @@ int main (int argc, char **argv)
     {
         perror("failed locking mutex2. fn : main\n");
     }
+
+    pthread_create(&my_threads[0], NULL, sine_writer, NULL);
+    pthread_create(&my_threads[1], NULL, sine_producer, NULL);
 
     for (int i = 0; i < n_threads; i++)
     {
@@ -115,8 +115,6 @@ int main (int argc, char **argv)
     pthread_mutex_destroy(&mutex1);
     pthread_mutex_destroy(&mutex2);
     free (my_threads);
-    pthread_mutex_destroy(&mutex1);
-    pthread_mutex_destroy(&mutex2);
 
     return (0);
 }
