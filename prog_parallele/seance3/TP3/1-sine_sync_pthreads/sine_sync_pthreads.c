@@ -115,8 +115,6 @@ int main (int argc, char **argv)
     pthread_mutex_destroy(&mutex1);
     pthread_mutex_destroy(&mutex2);
     free (my_threads);
-    pthread_mutex_destroy(&mutex1);
-    pthread_mutex_destroy(&mutex2);
 
     return (0);
 }
