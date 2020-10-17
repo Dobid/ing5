@@ -8,3 +8,7 @@
 **/TP3/2-sine_multi_writers_sync/*.o
 **/TP3/3-sine_full_sync/*.o
 **/TP3/4-consume_sync/*.o
+
+prog_parallele/seance3/TP3/1-sine_sync/sine.txt
+
+prog_parallele/seance3/TP3/1-sine_sync/sine_sync
