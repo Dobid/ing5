@@ -9,26 +9,14 @@
 **/TP3/3-sine_full_sync/*.o
 **/TP3/4-consume_sync/*.o
 
-prog_parallele/seance3/TP3/1-sine_sync/sine.txt
+**/TP3/1-sine_sync/sine_sync
 
-prog_parallele/seance3/TP3/1-sine_sync/sine_sync
+**/TP3/1-sine_sync_pthreads/sine_sync_pthreads
 
-prog_parallele/seance3/TP3/1-sine_sync_openmp/sine.txt
-
-prog_parallele/seance3/TP3/1-sine_sync_pthreads/sine.txt
-
-prog_parallele/seance3/TP3/2-sine_multi_writers_sync/sine_0.txt
-
-prog_parallele/seance3/TP3/2-sine_multi_writers_sync/sine_1.txt
-
-prog_parallele/seance3/TP3/2-sine_multi_writers_sync/sine_2.txt
-
-prog_parallele/seance3/TP3/1-sine_sync_pthreads/sine_sync_pthreads
-
-prog_parallele/seance3/TP3/2-sine_multi_writers_sync/sine_multi_sync
+**/TP3/2-sine_multi_writers_sync/sine_multi_sync
 
 *.txt
 
-prog_parallele/seance3/TP3/3-sine_full_sync/sine_full_sync
+**/TP3/3-sine_full_sync/sine_full_sync
 
-prog_parallele/seance3/TP3/4-consume_sync/consume_sync
+**/TP3/4-consume_sync/consume_sync
