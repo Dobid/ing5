@@ -5,11 +5,13 @@
 #include <math.h>
 #include <semaphore.h>
 
-#define N_MAX 4 //10000000LL
+#define N_MAX 10000000LL
 #define PI 3.14159265
 
 sem_t sem1;
 sem_t sem2;
+sem_t sem3;
+sem_t sem4;
 pthread_mutex_t mux;
 
 typedef struct {
@@ -28,24 +30,24 @@ void *sine_producer (void *thread_arg)
     
     for (phase = 0; phase < N_MAX; ++phase)
     {
-        printf("producer\n");
+        //printf("producer\n");
         x = 40 * 0.001 * phase;
         sine_value = (int)(amplitude * sin(x));
 
         int ret1 = sem_post(&sem1);
-        printf("sempost 1\n");
-        sem_getvalue(&sem1, &nb_jetons);
-        printf("nb_jetons: %d\n", nb_jetons);
-        ret1 = sem_post(&sem1);
-        printf("sempost 2\n");
-        sem_getvalue(&sem1, &nb_jetons);
-        printf("nb_jetons: %d\n", nb_jetons);
-        ret1 = sem_post(&sem1);
-        printf("sempost 3\n");
-        sem_getvalue(&sem1, &nb_jetons);
-        printf("nb_jetons: %d\n", nb_jetons);
+        //printf("sempost 1\n");
+        //sem_getvalue(&sem1, &nb_jetons);
+        // printf("nb_jetons: %d\n", nb_jetons);
+        // ret1 = sem_post(&sem1);
+        // printf("sempost 2\n");
+        // sem_getvalue(&sem1, &nb_jetons);
+        // printf("nb_jetons: %d\n", nb_jetons);
+        // ret1 = sem_post(&sem1);
+        // printf("sempost 3\n");
+        // sem_getvalue(&sem1, &nb_jetons);
+        // printf("nb_jetons: %d\n", nb_jetons);
 
-        int ret2 = sem_wait(&sem2);
+        int ret2 = sem_wait(&sem4);
     }
 
     return NULL;
@@ -68,16 +70,36 @@ void *sine_writers (void *thread_arg)
     
     for (nb_write = 0; nb_write < N_MAX; ++nb_write)
     {   
-        int ret1 = sem_wait(&sem1);
-        printf("id = %d\n", my_args->thread_id);
+        if(my_args->thread_id == 0)
+        {
+            int ret1 = sem_wait(&sem1);
+        }
+        else if(my_args->thread_id == 1)
+        {
+            int ret2 = sem_wait(&sem2);
+        }
+        else
+        {
+            int ret2 = sem_wait(&sem3);
+        }
+
+        //printf("id = %d\n", my_args->thread_id);
         fprintf(file, "%d\t%d\n", nb_write, sine_value);
         
-        sem_getvalue(&sem1, &nb_jetons);
+        //sem_getvalue(&sem1, &nb_jetons);
 
-        if(nb_jetons == 0)
+        if(my_args->thread_id == 0)
         {
             int ret2 = sem_post(&sem2);
-            printf("sempost sem2\n");
+        }
+        else if(my_args->thread_id == 1)
+        {
+            int ret2 = sem_post(&sem3);
+        }
+        else if(my_args->thread_id == 2)
+        {
+            int ret2 = sem_post(&sem4);
+            //printf("sempost sem4\n");
         }
     }
 
@@ -97,8 +119,10 @@ int main (int argc, char **argv)
     // Init semaphores à 0
     int ret1 = sem_init(&sem1, 0, 0);
     int ret2 = sem_init(&sem2, 0, 0);
+    int ret3 = sem_init(&sem3, 0, 0);
+    int ret4 = sem_init(&sem4, 0, 0);
 
-    int ret3 = pthread_mutex_unlock(&mux);
+    //int ret3 = pthread_mutex_unlock(&mux);
 
     n_threads = 4;
     
