@@ -34,11 +34,13 @@ int main(int argc, char **argv)
                 #pragma omp section
                 {
                     a[0] = 1;
+                    asm volatile("mfence" ::: "memory");
                     x[0] = b[0];
                 }
                 #pragma omp section
                 {
                     b[0] = 1;
+                    asm volatile("mfence" ::: "memory");
                     y[0] = a[0];
                 }
             }
