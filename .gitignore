@@ -1,5 +1,10 @@
 **/4-gradient/main
 
+<<<<<<< HEAD
+prog_parallele/seance2/TP2/4-gradient/build/*
+
+prog_parallele/seance2/TP2/4-gradient/out/*
+=======
 **/4-gradient/build/*
 
 **/TP2/4-gradient/out/*

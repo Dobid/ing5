@@ -29,7 +29,7 @@ void *sine_producer (void *thread_arg)
     
     for (phase = 0; phase < N_MAX; ++phase)
     {
-        //printf("producer\n");
+        // printf("producer\n");
         x = 40 * 0.001 * phase;
         sine_value = (int)(amplitude * sin(x));
 
@@ -75,7 +75,7 @@ void *sine_writers (void *thread_arg)
             ret = sem_wait(&sem3);
         }
     
-        //printf("id = %d\n", my_args->thread_id);
+        // printf("id = %d\n", my_args->thread_id);
         fprintf(file, "%d\t%d\n", nb_write, sine_value);
 
         if(my_args->thread_id == 0)

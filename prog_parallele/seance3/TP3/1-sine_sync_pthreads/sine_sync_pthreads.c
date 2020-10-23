@@ -11,7 +11,7 @@ int sine_value = 0;
 static pthread_mutex_t mutex1;
 static pthread_mutex_t mutex2;
 
-void *sine_producer (void *thread_arg)
+void *sine_producer(void *thread_arg)
 {
     int phase = 0;
     int amplitude = 10000;
@@ -23,10 +23,17 @@ void *sine_producer (void *thread_arg)
         x = 40 * 0.001 * phase;
         sine_value = (int)(amplitude * sin(x));
         int ret1 = pthread_mutex_unlock(&mutex1);
+        if(ret1 != 0)
+        {
+            perror("failed unlocking mutex1. fn : sine_producer\n");
+        }
         // Le thread 2 doit attendre que le thread 2 unlock le mutex 2
         int ret2 = pthread_mutex_lock (&mutex2);
+        if(ret2 != 0)
+        {
+            perror("failed locking mutex2. fn : sine_producer\n");
+        }
     }
-    
     return NULL;
 }
 
@@ -44,10 +51,17 @@ void *sine_writer (void *thread_arg)
     {
         // Le thread 2 doit attendre que le thread 1 unlock le mutex1
         int ret1 = pthread_mutex_lock(&mutex1);
+        if(ret1 != 0)
+        {
+            perror("failed locking mutex1. fn sine_writer\n");
+        }
         fprintf(file, "%d\t%d\n", nb_write, sine_value); 
         int ret2 = pthread_mutex_unlock (&mutex2);
+        if(ret2 != 0)
+        {
+            perror("failed unlocking mutex2. fn sine_writer\n");
+        }
     }
-    
     fclose(file);
     
     return NULL;
@@ -64,8 +78,8 @@ int main (int argc, char **argv)
     my_threads = calloc(n_threads, sizeof(pthread_t));
 
     // On lock pour forcer le programme à commencer par le thread 1
-    int ret1 = pthread_mutex_lock(&mutex1);
-    int ret2 = pthread_mutex_lock(&mutex2);
+    pthread_mutex_lock(&mutex1);
+    pthread_mutex_lock(&mutex2);
     
     pthread_create(&my_threads[0], NULL, sine_writer, NULL);
     pthread_create(&my_threads[1], NULL, sine_producer, NULL);
@@ -78,8 +92,8 @@ int main (int argc, char **argv)
     }
 
     // On unlock pour destroy sans problèmes
-    ret1 = pthread_mutex_unlock(&mutex1);
-    ret2 = pthread_mutex_unlock(&mutex2);
+    pthread_mutex_unlock(&mutex1);
+    pthread_mutex_unlock(&mutex2);
 
     pthread_mutex_destroy(&mutex1);
     pthread_mutex_destroy(&mutex2);
