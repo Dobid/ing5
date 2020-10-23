@@ -77,30 +77,13 @@ int main (int argc, char **argv)
     n_threads = 2;
     my_threads = calloc(n_threads, sizeof(pthread_t));
 
-    if(pthread_mutex_init(&mutex1, NULL) != 0)
-    {
-        perror("Couldn't initialise mutex1\n");
-    }
-    if(pthread_mutex_init(&mutex2, NULL) != 0)
-    {
-        perror("Couldn't initialise mutex2\n");
-    }
-    
     // On lock pour forcer le programme à commencer par le thread 1
     int ret1 = pthread_mutex_lock(&mutex1);
-    if(ret1 != 0)
-    {
-        perror("failed locking mutex1. fn : main");
-    }
     int ret2 = pthread_mutex_lock(&mutex2);
-    if(ret2 != 0)
-    {
-        perror("failed locking mutex2. fn : main\n");
-    }
-
+    
     pthread_create(&my_threads[0], NULL, sine_writer, NULL);
     pthread_create(&my_threads[1], NULL, sine_producer, NULL);
-
+    
     for (int i = 0; i < n_threads; i++)
     {
         rc = pthread_join(my_threads[i], &thread_return);
