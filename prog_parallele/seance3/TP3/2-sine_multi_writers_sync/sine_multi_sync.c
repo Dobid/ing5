@@ -20,18 +20,16 @@ typedef struct {
 } thread_args_t;
 
 int sine_value = 0;
-int cpt = 0;
 
 void *sine_producer (void *thread_arg)
 {
     int phase = 0;
     int amplitude = 10000;
     float x = 0;
-    int nb_jetons = 0;
     
     for (phase = 0; phase < N_MAX; ++phase)
     {
-        printf("producer\n");
+        //printf("producer\n");
         x = 40 * 0.001 * phase;
         sine_value = (int)(amplitude * sin(x));
 
@@ -53,7 +51,6 @@ void *sine_writers (void *thread_arg)
     int nb_write = 0;
     FILE *file = NULL;
     char filename[20] = {'\0'};
-    int nb_jetons = 0;
     int ret = 0;
     
     sprintf(filename, "sine_%d.txt", my_args->thread_id);
@@ -78,7 +75,7 @@ void *sine_writers (void *thread_arg)
             ret = sem_wait(&sem3);
         }
     
-        printf("id = %d\n", my_args->thread_id);
+        //printf("id = %d\n", my_args->thread_id);
         fprintf(file, "%d\t%d\n", nb_write, sine_value);
 
         if(my_args->thread_id == 0)
