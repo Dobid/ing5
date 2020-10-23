@@ -120,7 +120,6 @@ int main (int argc, char **argv)
     pthread_t *my_threads;
     thread_args_t *my_args;
     void *thread_return;
-    int ret = 0;
     
     n_threads = 6;
 
