@@ -62,13 +62,13 @@ int main (int argc, char **argv)
 
     n_threads = 2;
     my_threads = calloc(n_threads, sizeof(pthread_t));
-    
-    pthread_create(&my_threads[0], NULL, sine_writer, NULL);
-    pthread_create(&my_threads[1], NULL, sine_producer, NULL);
 
     // On lock pour forcer le programme à commencer par le thread 1
     int ret1 = pthread_mutex_lock(&mutex1);
     int ret2 = pthread_mutex_lock(&mutex2);
+    
+    pthread_create(&my_threads[0], NULL, sine_writer, NULL);
+    pthread_create(&my_threads[1], NULL, sine_producer, NULL);
     
     for (int i = 0; i < n_threads; i++)
     {
