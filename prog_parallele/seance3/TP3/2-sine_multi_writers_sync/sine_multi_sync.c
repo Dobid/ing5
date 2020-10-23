@@ -5,7 +5,7 @@
 #include <math.h>
 #include <semaphore.h>
 
-#define N_MAX 1000000LL
+#define N_MAX 10000000LL
 #define PI 3.14159265
 
 sem_t sem1;

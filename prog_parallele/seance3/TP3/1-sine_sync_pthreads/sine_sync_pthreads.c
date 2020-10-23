@@ -78,8 +78,8 @@ int main (int argc, char **argv)
     my_threads = calloc(n_threads, sizeof(pthread_t));
 
     // On lock pour forcer le programme à commencer par le thread 1
-    int ret1 = pthread_mutex_lock(&mutex1);
-    int ret2 = pthread_mutex_lock(&mutex2);
+    pthread_mutex_lock(&mutex1);
+    pthread_mutex_lock(&mutex2);
     
     pthread_create(&my_threads[0], NULL, sine_writer, NULL);
     pthread_create(&my_threads[1], NULL, sine_producer, NULL);
@@ -92,8 +92,8 @@ int main (int argc, char **argv)
     }
 
     // On unlock pour destroy sans problèmes
-    ret1 = pthread_mutex_unlock(&mutex1);
-    ret2 = pthread_mutex_unlock(&mutex2);
+    pthread_mutex_unlock(&mutex1);
+    pthread_mutex_unlock(&mutex2);
 
     pthread_mutex_destroy(&mutex1);
     pthread_mutex_destroy(&mutex2);
