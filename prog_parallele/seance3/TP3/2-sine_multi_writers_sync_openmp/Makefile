@@ -8,7 +8,7 @@ SRC := $(wildcard *.c)
 # On prend tous les fichiers src/*.c dans la variable SRC, on remplace par build/*.o
 OBJ := $(patsubst %.c,%.o,$(SRC))
 # Le nom du programme final
-BIN := sine_multi_sync_openmp
+BIN := sine_multi_writers_sync_openmp
 LOG := $(BIN).log
 PGM := *.pgm
 TXT := *.txt

@@ -33,13 +33,13 @@ void *sine_producer (void *thread_arg)
         x = 40 * 0.001 * phase;
         sine_value = (int)(amplitude * sin(x));
 
-        int ret = sem_post(&sem1);
-        ret = sem_post(&sem2);
-        ret = sem_post(&sem3);
+        sem_post(&sem1);
+        sem_post(&sem2);
+        sem_post(&sem3);
 
-        ret = sem_wait(&sem4);
-        ret = sem_wait(&sem5);
-        ret = sem_wait(&sem6);
+        sem_wait(&sem4);
+        sem_wait(&sem5);
+        sem_wait(&sem6);
     }
 
     return NULL;
@@ -51,7 +51,6 @@ void *sine_writers (void *thread_arg)
     int nb_write = 0;
     FILE *file = NULL;
     char filename[20] = {'\0'};
-    int ret = 0;
     
     sprintf(filename, "sine_%d.txt", my_args->thread_id);
     file = fopen (filename , "w");
@@ -64,15 +63,15 @@ void *sine_writers (void *thread_arg)
     {   
         if(my_args->thread_id == 0)
         {
-            ret = sem_wait(&sem1);
+            sem_wait(&sem1);
         }
         else if(my_args->thread_id == 1)
         {
-            ret = sem_wait(&sem2);
+            sem_wait(&sem2);
         }
         else if(my_args->thread_id == 2)
         {
-            ret = sem_wait(&sem3);
+            sem_wait(&sem3);
         }
     
         // printf("id = %d\n", my_args->thread_id);
@@ -80,15 +79,15 @@ void *sine_writers (void *thread_arg)
 
         if(my_args->thread_id == 0)
         {
-            ret = sem_post(&sem4);
+            sem_post(&sem4);
         }
         else if(my_args->thread_id == 1)
         {
-            ret = sem_post(&sem5);
+            sem_post(&sem5);
         }
         else if(my_args->thread_id == 2)
         {
-            ret = sem_post(&sem6);
+            sem_post(&sem6);
         }
     }
 
@@ -104,15 +103,14 @@ int main (int argc, char **argv)
     pthread_t *my_threads;
     thread_args_t *my_args;
     void *thread_return;
-    int ret = 0;
 
     // Init semaphores à 0
-    ret = sem_init(&sem1, 0, 0);
-    ret = sem_init(&sem2, 0, 0);
-    ret = sem_init(&sem3, 0, 0);
-    ret = sem_init(&sem4, 0, 0);
-    ret = sem_init(&sem5, 0, 0);
-    ret = sem_init(&sem6, 0, 0);
+    sem_init(&sem1, 0, 0);
+    sem_init(&sem2, 0, 0);
+    sem_init(&sem3, 0, 0);
+    sem_init(&sem4, 0, 0);
+    sem_init(&sem5, 0, 0);
+    sem_init(&sem6, 0, 0);
 
     n_threads = 4;
     
