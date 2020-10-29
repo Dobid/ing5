@@ -1,5 +1,10 @@
 **/4-gradient/main
 
+<<<<<<< HEAD
+prog_parallele/seance2/TP2/4-gradient/build/*
+
+prog_parallele/seance2/TP2/4-gradient/out/*
+=======
 **/4-gradient/build/*
 
 **/TP2/4-gradient/out/*
@@ -8,3 +13,15 @@
 **/TP3/2-sine_multi_writers_sync/*.o
 **/TP3/3-sine_full_sync/*.o
 **/TP3/4-consume_sync/*.o
+
+**/TP3/1-sine_sync_openmp/sine_sync_openmp
+
+**/TP3/1-sine_sync_pthreads/sine_sync_pthreads
+
+**/TP3/2-sine_multi_writers_sync/sine_multi_sync
+
+*.txt
+
+**/TP3/3-sine_full_sync/sine_full_sync
+
+**/TP3/4-consume_sync/consume_sync
