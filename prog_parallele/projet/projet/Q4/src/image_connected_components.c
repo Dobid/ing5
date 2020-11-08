@@ -6,6 +6,7 @@
  * @date octobre 2020
  */
 #include "image_connected_components.h"
+#include "omp.h"
 
 /**
  * @brief Assign a unique color to each tag
@@ -192,7 +193,10 @@ int ccl_reduce_equivalences(
 void ccl_retag(image_t *tags, int *class_num)
 {
   int x, y, t;
+
+  #pragma omp parallel for shared(x, y, t) collapse(2)
   /* Replace temporay class tags by their renumbered class root */
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -220,8 +224,7 @@ void ccl_analyze(
       image_connected_component_t *con_cmp, 
       int num_classes)
 {
-  int x, y, t;
-
+  int x, y, t; 
   for (t = 0; t < num_classes; ++t)
   {
     con_cmp[t] = (image_connected_component_t){
@@ -233,6 +236,7 @@ void ccl_analyze(
         };
   }
 
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -261,6 +265,8 @@ void ccl_draw_colors(const image_t *tags, image_t *color)
 {
   int x, y, t;
   assert(tags && color);
+  
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -411,14 +417,14 @@ int image_connected_components(
   ccl_analyze(tags, con_cmp, num_cc);
 
   /* Write outputs */ 
-  for (t = 0; t < num_cc; ++t)
-  {
-    printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
-        t, 
-        con_cmp[t].x1, con_cmp[t].y1,
-        con_cmp[t].x2, con_cmp[t].y2,
-        con_cmp[t].num_pixels);
-  }
+  // for (t = 0; t < num_cc; ++t)
+  // {
+  //   //printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
+  //       // t, 
+  //       // con_cmp[t].x1, con_cmp[t].y1,
+  //       // con_cmp[t].x2, con_cmp[t].y2,
+  //       // con_cmp[t].num_pixels);
+  // }
 
   DEBUG("Draw color output");
   /* draw connected components as a color image */
