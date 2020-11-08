@@ -6,6 +6,7 @@
  * @date octobre 2020
  */
 #include "image_connected_components.h"
+#include "omp.h"
 
 /**
  * @brief Assign a unique color to each tag
@@ -95,6 +96,8 @@ int ccl_temp_tag(
   int x, y;
   bool bg_color;
   int num_tags = 0;
+  omp_lock_t lock;
+  omp_init_lock(&lock);
 
   DEBUG("First step: assign temporary class tag");
 
@@ -102,6 +105,7 @@ int ccl_temp_tag(
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
   /* Loop over all image pixels */
+  #pragma omp parallel for private(x,y)
   for(y = 0; y < self->height; ++y)
   {
     for (x = 0; x < self->width; ++x)
@@ -131,9 +135,13 @@ int ccl_temp_tag(
         if (tag == 0)
         {
           /* adjacent pixels have not yet been tagged: create a new tag */
+          
+          omp_set_lock(&lock);
           ++num_tags;
           assert(num_tags < MAX_TAGS);
           tag = num_tags;
+          omp_unset_lock(&lock);
+  
           /* new tag has no equivalence */
           equiv_out[tag] = tag;
         }
@@ -193,6 +201,7 @@ void ccl_retag(image_t *tags, int *class_num)
 {
   int x, y, t;
   /* Replace temporay class tags by their renumbered class root */
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -220,8 +229,7 @@ void ccl_analyze(
       image_connected_component_t *con_cmp, 
       int num_classes)
 {
-  int x, y, t;
-
+  int x, y, t; 
   for (t = 0; t < num_classes; ++t)
   {
     con_cmp[t] = (image_connected_component_t){
@@ -233,6 +241,7 @@ void ccl_analyze(
         };
   }
 
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -261,6 +270,8 @@ void ccl_draw_colors(const image_t *tags, image_t *color)
 {
   int x, y, t;
   assert(tags && color);
+  
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -325,6 +336,77 @@ void ccl_draw_legend(image_t *color, int num_colors)
   }
 }
 
+void ccl_temp_tag_threads(
+      const image_t *self,
+      image_t *tags, 
+      int *equiv_out)
+{
+  assert(self && tags && equiv_out);
+
+  int x, y;
+  bool bg_color;
+  int tag = 0;
+
+  DEBUG("First step: assign temporary class tag");
+
+    /* Detect background color */
+  bg_color = image_bmp_getpixel(self, 0, 0).bit;
+
+  // Initialisation des équivalences dans le tableau
+  for(y = 0; y < self->height; ++y)
+  {
+    for (x = 0; x < self->width; ++x)
+    {
+        tag = image_gs16_getpixel(tags, x, y).gs16;
+        equiv_out[tag] = tag;
+    }
+  }
+
+  /* Loop over all image pixels */
+  for(y = 0; y < self->height; ++y)
+  {
+    for (x = 0; x < self->width; ++x)
+    {
+      /* read current pixel color */
+      bool pxl_color = image_bmp_getpixel(self, x, y).bit;
+      
+      /* by default, pixel tag is zero (background) */
+      tag = 0;
+
+      if (pxl_color != bg_color) 
+      {
+        /* Current pixel is foreground color: give it a tag, but which one? */
+
+        /* Read the tag (if any) of the North and West adjacent pixels */
+        /* or 0, if outside image coordinate ranges */
+        int tag_n = image_coord_check(tags, x, y-1) ? 
+              image_gs16_getpixel(tags, x, y-1).gs16 
+              : 0;
+        int tag_w = image_coord_check(tags, x-1, y) ? 
+              image_gs16_getpixel(tags, x-1, y).gs16
+              : 0;
+
+        // Retrouver le tag de la case actuelle
+        tag = image_gs16_getpixel(tags, x, y).gs16;
+
+        // Exemple boucle tag
+        if (tag_n > 0 && tag_w > 0 && tag_w != tag_n)
+        {
+          /* if neighbors have different tags: join them */
+          join(equiv_out, tag_n, tag_w);
+        }
+
+        if (tag_n > 0 && tag > 0 && tag != tag_n)
+        {
+          join(equiv_out, tag, tag_n);
+        }        
+      }
+      /* store tag in the tags image structure */
+      image_gs16_setpixel(tags, x, y, (color_t){.gs16 = tag});
+    }
+  }
+}
+
 /**
  * @brief Identify connected components in given image
  * @param self the input image (should be a binary black & white image, i.e. self->type = IMAGE_BITMAP)
@@ -341,9 +423,12 @@ int image_connected_components(
       int debug)
 {
   int *equiv_table;
+  // Nouveau tableau équivalences des threads
+  int *equiv_table_threads;
   int num_tags = 0;
 
   int *class_num;
+  int *class_num_threads;
   int num_cc;
   int t;
 
@@ -364,7 +449,11 @@ int image_connected_components(
   /* Allocate the equivalence table */
   equiv_table = calloc(MAX_TAGS, sizeof(int));
   assert(equiv_table);
-  
+
+  // Nouvel alloc du tab d'quivalences pour threads
+  equiv_table_threads = calloc(MAX_TAGS, sizeof(int));
+  assert(equiv_table);
+
   /* ~~~~~~~~~~ First step: assign temporary class tags ~~~~~~~~~~ */
   num_tags = ccl_temp_tag(self, tags, equiv_table);
 #ifndef NDEBUG
@@ -411,14 +500,28 @@ int image_connected_components(
   ccl_analyze(tags, con_cmp, num_cc);
 
   /* Write outputs */ 
-  for (t = 0; t < num_cc; ++t)
-  {
-    printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
-        t, 
-        con_cmp[t].x1, con_cmp[t].y1,
-        con_cmp[t].x2, con_cmp[t].y2,
-        con_cmp[t].num_pixels);
-  }
+  // for (t = 0; t < num_cc; ++t)
+  // {
+  //   //printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
+  //       // t, 
+  //       // con_cmp[t].x1, con_cmp[t].y1,
+  //       // con_cmp[t].x2, con_cmp[t].y2,
+  //       // con_cmp[t].num_pixels);
+  // }
+
+  ///////// TAGS THREADS
+  // Recalcule des tag temporaires et une table d'équivalence
+  ccl_temp_tag_threads(self, tags, equiv_table_threads);
+
+  // Reduce les equivalences
+  class_num_threads = calloc(num_tags+1, sizeof(int));
+  assert(class_num_threads);
+  num_cc = ccl_reduce_equivalences(equiv_table_threads, num_tags, class_num_threads);
+
+  // Retag tags finaux inter-threads
+  ccl_retag(tags, class_num_threads);
+  image_save_ascii(tags, "classes.pgm");
+  ////////////////
 
   DEBUG("Draw color output");
   /* draw connected components as a color image */
@@ -451,7 +554,5 @@ int image_connected_components(
   DEBUG("End of connected components labeling");
   return num_cc;
 }
-
-
 
 
