@@ -141,11 +141,14 @@ int ccl_temp_tag(
         {
           /* adjacent pixels have not yet been tagged: create a new tag */
           
-          omp_set_lock(&lock);
-          ++num_tags;
-          assert(num_tags < MAX_TAGS);
-          tag = num_tags;
-          omp_unset_lock(&lock);
+          #pragma omp critical
+          {
+            //omp_set_lock(&lock);
+            ++num_tags;
+            assert(num_tags < MAX_TAGS);
+            tag = num_tags;
+            //omp_unset_lock(&lock);
+          }
   
           /* new tag has no equivalence */
           equiv_out[tag] = tag;
@@ -359,23 +362,12 @@ void ccl_temp_tag_threads(
     /* Detect background color */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
-  // // Initialisation des équivalences dans le tableau
-  // for(int y = 0; y < self->height; ++y)
-  // {
-  //   for (int x = 0; x < self->width; ++x)
-  //   {
-  //       tag = image_gs16_getpixel(tags, x, y).gs16;
-  //       equiv_out[tag] = tag;
-  //   }
-  // }
-
   printf("\n\nnb_threads %d", atoi(getenv("OMP_NUM_THREADS")));
 
   /* Loop over all image pixels */
   for(int i = 0; i < atoi(getenv("OMP_NUM_THREADS"))-1; i++)
   {
     y = tab_lim[i]+1; // en dessous de la frontière
-    //printf("\n\nthread %d, y = %d\n", i, y);
 
     for (int x = 0; x < self->width; ++x)
     {
@@ -385,7 +377,7 @@ void ccl_temp_tag_threads(
       /* by default, pixel tag is zero (background) */
       tag = 0;
 
-      if (pxl_color != bg_color) 
+      if (pxl_color != bg_color)
       {
         /* Current pixel is foreground color: give it a tag, but which one? */
 
@@ -405,8 +397,6 @@ void ccl_temp_tag_threads(
           join(equiv_out, tag_n, tag);
         }
       }
-      /* store tag in the tags image structure */
-      //image_gs16_setpixel(tags, x, y, (color_t){.gs16 = 0});
     }
   }
 
@@ -429,12 +419,9 @@ int image_connected_components(
       int debug)
 {
   int *equiv_table;
-  // Nouveau tableau équivalences des threads
-  int *equiv_table_threads;
   int num_tags = 0;
 
   int *class_num;
-  int *class_num_threads;
   int num_cc;
   int t;
 
@@ -454,10 +441,6 @@ int image_connected_components(
 
   /* Allocate the equivalence table */
   equiv_table = calloc(MAX_TAGS, sizeof(int));
-  assert(equiv_table);
-
-  // Nouvel alloc du tab d'quivalences pour threads
-  equiv_table_threads = calloc(MAX_TAGS, sizeof(int));
   assert(equiv_table);
 
   /* ~~~~~~~~~~ First step: assign temporary class tags ~~~~~~~~~~ */
