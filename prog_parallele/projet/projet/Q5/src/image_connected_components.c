@@ -8,6 +8,8 @@
 #include "image_connected_components.h"
 #include "omp.h"
 
+int *tab_lim;
+
 /**
  * @brief Assign a unique color to each tag
  * @param tag a class tag
@@ -98,14 +100,17 @@ int ccl_temp_tag(
   int num_tags = 0;
   omp_lock_t lock;
   omp_init_lock(&lock);
+  tab_lim = calloc(atoi(getenv("OMP_NUM_THREADS")), sizeof(int));
 
   DEBUG("First step: assign temporary class tag");
 
     /* Detect background color */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
+  printf("\n\nnlke nb_th  %d\n\n", omp_get_num_threads());
+
   /* Loop over all image pixels */
-  #pragma omp parallel for private(x,y)
+  #pragma omp parallel for private(x)
   for(y = 0; y < self->height; ++y)
   {
     for (x = 0; x < self->width; ++x)
@@ -155,6 +160,8 @@ int ccl_temp_tag(
       /* store tag in the tags image structure */
       image_gs16_setpixel(tags, x, y, (color_t){.gs16 = tag});
     }
+
+    tab_lim[omp_get_thread_num()] = y;
   }
 
   return num_tags;
@@ -343,29 +350,34 @@ void ccl_temp_tag_threads(
 {
   assert(self && tags && equiv_out);
 
-  int x, y;
   bool bg_color;
   int tag = 0;
+  int y = 0;
 
   DEBUG("First step: assign temporary class tag");
 
     /* Detect background color */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
-  // Initialisation des équivalences dans le tableau
-  for(y = 0; y < self->height; ++y)
-  {
-    for (x = 0; x < self->width; ++x)
-    {
-        tag = image_gs16_getpixel(tags, x, y).gs16;
-        equiv_out[tag] = tag;
-    }
-  }
+  // // Initialisation des équivalences dans le tableau
+  // for(int y = 0; y < self->height; ++y)
+  // {
+  //   for (int x = 0; x < self->width; ++x)
+  //   {
+  //       tag = image_gs16_getpixel(tags, x, y).gs16;
+  //       equiv_out[tag] = tag;
+  //   }
+  // }
+
+  printf("\n\nnb_threads %d", atoi(getenv("OMP_NUM_THREADS")));
 
   /* Loop over all image pixels */
-  for(y = 0; y < self->height; ++y)
+  for(int i = 0; i < atoi(getenv("OMP_NUM_THREADS"))-1; i++)
   {
-    for (x = 0; x < self->width; ++x)
+    y = tab_lim[i]+1; // en dessous de la frontière
+    //printf("\n\nthread %d, y = %d\n", i, y);
+
+    for (int x = 0; x < self->width; ++x)
     {
       /* read current pixel color */
       bool pxl_color = image_bmp_getpixel(self, x, y).bit;
@@ -382,29 +394,23 @@ void ccl_temp_tag_threads(
         int tag_n = image_coord_check(tags, x, y-1) ? 
               image_gs16_getpixel(tags, x, y-1).gs16 
               : 0;
-        int tag_w = image_coord_check(tags, x-1, y) ? 
-              image_gs16_getpixel(tags, x-1, y).gs16
-              : 0;
 
         // Retrouver le tag de la case actuelle
         tag = image_gs16_getpixel(tags, x, y).gs16;
 
         // Exemple boucle tag
-        if (tag_n > 0 && tag_w > 0 && tag_w != tag_n)
-        {
-          /* if neighbors have different tags: join them */
-          join(equiv_out, tag_n, tag_w);
-        }
-
         if (tag_n > 0 && tag > 0 && tag != tag_n)
         {
-          join(equiv_out, tag, tag_n);
-        }        
+          /* if neighbors have different tags: join them */
+          join(equiv_out, tag_n, tag);
+        }
       }
       /* store tag in the tags image structure */
-      image_gs16_setpixel(tags, x, y, (color_t){.gs16 = tag});
+      //image_gs16_setpixel(tags, x, y, (color_t){.gs16 = 0});
     }
   }
+
+  free(tab_lim);
 }
 
 /**
@@ -465,6 +471,9 @@ int image_connected_components(
     DEBUG("T[%02d] = %02d", t, equiv_table[t]);
   }
 #endif
+
+  ///////// JOIN THREADS ///////////////
+  ccl_temp_tag_threads(self, tags, equiv_table);
   
   /* ~~~~~~~~~~ Second step: reduce equivalence classes and renumber ~~~~~~~~~~ */
   DEBUG("Now reduce tag equivalence classes, and renumber those classes");
@@ -500,28 +509,14 @@ int image_connected_components(
   ccl_analyze(tags, con_cmp, num_cc);
 
   /* Write outputs */ 
-  // for (t = 0; t < num_cc; ++t)
-  // {
-  //   //printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
-  //       // t, 
-  //       // con_cmp[t].x1, con_cmp[t].y1,
-  //       // con_cmp[t].x2, con_cmp[t].y2,
-  //       // con_cmp[t].num_pixels);
-  // }
-
-  ///////// TAGS THREADS
-  // Recalcule des tag temporaires et une table d'équivalence
-  ccl_temp_tag_threads(self, tags, equiv_table_threads);
-
-  // Reduce les equivalences
-  class_num_threads = calloc(num_tags+1, sizeof(int));
-  assert(class_num_threads);
-  num_cc = ccl_reduce_equivalences(equiv_table_threads, num_tags, class_num_threads);
-
-  // Retag tags finaux inter-threads
-  ccl_retag(tags, class_num_threads);
-  image_save_ascii(tags, "classes.pgm");
-  ////////////////
+  for (t = 0; t < num_cc; ++t)
+  {
+    printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
+        t, 
+        con_cmp[t].x1, con_cmp[t].y1,
+        con_cmp[t].x2, con_cmp[t].y2,
+        con_cmp[t].num_pixels);
+  }
 
   DEBUG("Draw color output");
   /* draw connected components as a color image */
