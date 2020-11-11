@@ -194,7 +194,6 @@ void ccl_retag(image_t *tags, int *class_num)
 {
   int x, y, t;
 
-  #pragma omp parallel for shared(x, y, t) collapse(2)
   /* Replace temporay class tags by their renumbered class root */
   #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
