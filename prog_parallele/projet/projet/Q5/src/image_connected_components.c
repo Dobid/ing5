@@ -6,6 +6,9 @@
  * @date octobre 2020
  */
 #include "image_connected_components.h"
+#include "omp.h"
+
+int *tab_lim;
 
 /**
  * @brief Assign a unique color to each tag
@@ -95,13 +98,19 @@ int ccl_temp_tag(
   int x, y;
   bool bg_color;
   int num_tags = 0;
+  omp_lock_t lock;
+  omp_init_lock(&lock);
+  tab_lim = calloc(atoi(getenv("OMP_NUM_THREADS")), sizeof(int));
 
   DEBUG("First step: assign temporary class tag");
 
     /* Detect background color */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
+  printf("\n\nnlke nb_th  %d\n\n", omp_get_num_threads());
+
   /* Loop over all image pixels */
+  #pragma omp parallel for private(x)
   for(y = 0; y < self->height; ++y)
   {
     for (x = 0; x < self->width; ++x)
@@ -131,9 +140,16 @@ int ccl_temp_tag(
         if (tag == 0)
         {
           /* adjacent pixels have not yet been tagged: create a new tag */
-          ++num_tags;
-          assert(num_tags < MAX_TAGS);
-          tag = num_tags;
+          
+          #pragma omp critical
+          {
+            //omp_set_lock(&lock);
+            ++num_tags;
+            assert(num_tags < MAX_TAGS);
+            tag = num_tags;
+            //omp_unset_lock(&lock);
+          }
+  
           /* new tag has no equivalence */
           equiv_out[tag] = tag;
         }
@@ -147,6 +163,8 @@ int ccl_temp_tag(
       /* store tag in the tags image structure */
       image_gs16_setpixel(tags, x, y, (color_t){.gs16 = tag});
     }
+
+    tab_lim[omp_get_thread_num()] = y;
   }
 
   return num_tags;
@@ -193,6 +211,7 @@ void ccl_retag(image_t *tags, int *class_num)
 {
   int x, y, t;
   /* Replace temporay class tags by their renumbered class root */
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -220,8 +239,7 @@ void ccl_analyze(
       image_connected_component_t *con_cmp, 
       int num_classes)
 {
-  int x, y, t;
-
+  int x, y, t; 
   for (t = 0; t < num_classes; ++t)
   {
     con_cmp[t] = (image_connected_component_t){
@@ -233,6 +251,7 @@ void ccl_analyze(
         };
   }
 
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -261,6 +280,8 @@ void ccl_draw_colors(const image_t *tags, image_t *color)
 {
   int x, y, t;
   assert(tags && color);
+  
+  #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
     for (x = 0; x < tags->width; ++x)
@@ -325,6 +346,63 @@ void ccl_draw_legend(image_t *color, int num_colors)
   }
 }
 
+void ccl_temp_tag_threads(
+      const image_t *self,
+      image_t *tags, 
+      int *equiv_out)
+{
+  assert(self && tags && equiv_out);
+
+  bool bg_color;
+  int tag = 0;
+  int y = 0;
+
+  DEBUG("First step: assign temporary class tag");
+
+    /* Detect background color */
+  bg_color = image_bmp_getpixel(self, 0, 0).bit;
+
+  printf("\n\nnb_threads %d", atoi(getenv("OMP_NUM_THREADS")));
+
+  /* Loop over all image pixels */
+  for(int i = 0; i < atoi(getenv("OMP_NUM_THREADS"))-1; i++)
+  {
+    y = tab_lim[i]+1; // en dessous de la frontière
+
+    for (int x = 0; x < self->width; ++x)
+    {
+      /* read current pixel color */
+      bool pxl_color = image_bmp_getpixel(self, x, y).bit;
+      
+      /* by default, pixel tag is zero (background) */
+      tag = 0;
+
+      if (pxl_color != bg_color)
+      {
+        /* Current pixel is foreground color: give it a tag, but which one? */
+
+        /* Read the tag (if any) of the North and West adjacent pixels */
+        /* or 0, if outside image coordinate ranges */
+        int tag_n = image_coord_check(tags, x, y-1) ? 
+              image_gs16_getpixel(tags, x, y-1).gs16 
+              : 0;
+
+        // Retrouver le tag de la case actuelle
+        tag = image_gs16_getpixel(tags, x, y).gs16;
+
+        // Exemple boucle tag
+        if (tag_n > 0 && tag > 0 && tag != tag_n)
+        {
+          /* if neighbors have different tags: join them */
+          join(equiv_out, tag_n, tag);
+        }
+      }
+    }
+  }
+
+  free(tab_lim);
+}
+
 /**
  * @brief Identify connected components in given image
  * @param self the input image (should be a binary black & white image, i.e. self->type = IMAGE_BITMAP)
@@ -364,7 +442,7 @@ int image_connected_components(
   /* Allocate the equivalence table */
   equiv_table = calloc(MAX_TAGS, sizeof(int));
   assert(equiv_table);
-  
+
   /* ~~~~~~~~~~ First step: assign temporary class tags ~~~~~~~~~~ */
   num_tags = ccl_temp_tag(self, tags, equiv_table);
 #ifndef NDEBUG
@@ -376,6 +454,9 @@ int image_connected_components(
     DEBUG("T[%02d] = %02d", t, equiv_table[t]);
   }
 #endif
+
+  ///////// JOIN THREADS ///////////////
+  ccl_temp_tag_threads(self, tags, equiv_table);
   
   /* ~~~~~~~~~~ Second step: reduce equivalence classes and renumber ~~~~~~~~~~ */
   DEBUG("Now reduce tag equivalence classes, and renumber those classes");
@@ -451,7 +532,5 @@ int image_connected_components(
   DEBUG("End of connected components labeling");
   return num_cc;
 }
-
-
 
 

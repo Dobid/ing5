@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include "image_lib.h"
 
-
 void test_image_connected_components(const char *fname, int debug)
 {
   /* Allocate image structure for input image (expect a bitmap, i.e; black/white image) */
@@ -60,7 +59,7 @@ int main(int argc, char **argv)
     DEBUG("Default parameters");
     test_image_connected_components("img/test1.pbm", 1);
   }
-    
+  
   printf("Finished.\n");
   return 0;
 }
