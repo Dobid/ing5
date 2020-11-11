@@ -98,8 +98,6 @@ int ccl_temp_tag(
   int x, y;
   bool bg_color;
   int num_tags = 0;
-  omp_lock_t lock;
-  omp_init_lock(&lock);
   tab_lim = calloc(atoi(getenv("OMP_NUM_THREADS")), sizeof(int));
 
   DEBUG("First step: assign temporary class tag");
@@ -110,7 +108,7 @@ int ccl_temp_tag(
   printf("\n\nnlke nb_th  %d\n\n", omp_get_num_threads());
 
   /* Loop over all image pixels */
-  #pragma omp parallel for private(x)
+  #pragma omp parallel for private(x, y)
   for(y = 0; y < self->height; ++y)
   {
     for (x = 0; x < self->width; ++x)
@@ -143,11 +141,9 @@ int ccl_temp_tag(
           
           #pragma omp critical
           {
-            //omp_set_lock(&lock);
             ++num_tags;
             assert(num_tags < MAX_TAGS);
             tag = num_tags;
-            //omp_unset_lock(&lock);
           }
   
           /* new tag has no equivalence */
@@ -346,7 +342,7 @@ void ccl_draw_legend(image_t *color, int num_colors)
   }
 }
 
-void ccl_temp_tag_threads(
+void ccl_join_lim_threads(
       const image_t *self,
       image_t *tags, 
       int *equiv_out)
@@ -365,6 +361,7 @@ void ccl_temp_tag_threads(
   printf("\n\nnb_threads %d", atoi(getenv("OMP_NUM_THREADS")));
 
   /* Loop over all image pixels */
+  #pragma omp parallel for private(tag, y)
   for(int i = 0; i < atoi(getenv("OMP_NUM_THREADS"))-1; i++)
   {
     y = tab_lim[i]+1; // en dessous de la frontière
@@ -456,7 +453,7 @@ int image_connected_components(
 #endif
 
   ///////// JOIN THREADS ///////////////
-  ccl_temp_tag_threads(self, tags, equiv_table);
+  ccl_join_lim_threads(self, tags, equiv_table);
   
   /* ~~~~~~~~~~ Second step: reduce equivalence classes and renumber ~~~~~~~~~~ */
   DEBUG("Now reduce tag equivalence classes, and renumber those classes");
