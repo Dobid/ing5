@@ -10,7 +10,7 @@
 
 #include "image_lib.h"
 
-#define MAX_TAGS 500000
+#define MAX_TAGS 500000*12
 
 /**
  * @brief bounding box descriptor of a connected component

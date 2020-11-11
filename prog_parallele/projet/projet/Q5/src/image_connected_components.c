@@ -98,16 +98,18 @@ int ccl_temp_tag(
   int x, y;
   bool bg_color;
   int num_tags = 0;
+
+  /* On alloue un tableau de int de la taille du nombre de treads 
+  qui contiendra la dernière ordonnée que chaque thread aura parcouru */
   tab_lim = calloc(atoi(getenv("OMP_NUM_THREADS")), sizeof(int));
 
   DEBUG("First step: assign temporary class tag");
 
-    /* Detect background color */
+  /* Detect background color */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
-  printf("\n\nnlke nb_th  %d\n\n", omp_get_num_threads());
-
   /* Loop over all image pixels */
+  // On parallélise la boucle y seulement
   #pragma omp parallel for private(x, y)
   for(y = 0; y < self->height; ++y)
   {
@@ -139,6 +141,10 @@ int ccl_temp_tag(
         {
           /* adjacent pixels have not yet been tagged: create a new tag */
           
+          // La variable num_tags doit être protégée car elle est modifiée et
+          // partagée entre les threads. Nous utilisons opm critical pour qu'un seul
+          // thread ne puisse y accéder à la fois et pour qu'il n'y ait pas les mêmes tags 
+          // pour des figures différentes entre les threads.
           #pragma omp critical
           {
             ++num_tags;
@@ -160,6 +166,9 @@ int ccl_temp_tag(
       image_gs16_setpixel(tags, x, y, (color_t){.gs16 = tag});
     }
 
+    // Nous récupérons la limite de l'ordonnée y de chaque thread
+    // et la stockons dans un tableau avec pour indice le numéro du thread
+    // Cette variable est paratgée mais pas protégée car les threads n'accèdent pas à la même case
     tab_lim[omp_get_thread_num()] = y;
   }
 
@@ -206,7 +215,9 @@ int ccl_reduce_equivalences(
 void ccl_retag(image_t *tags, int *class_num)
 {
   int x, y, t;
+
   /* Replace temporay class tags by their renumbered class root */
+  /* On parallélise les deux boucles, t est privé car c'est le tag propre à chaque pixel */
   #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
@@ -247,6 +258,7 @@ void ccl_analyze(
         };
   }
 
+  /* On parallélise les deux boucles, t est privé car il est le tag propre à chaque pixel */
   #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
@@ -277,6 +289,7 @@ void ccl_draw_colors(const image_t *tags, image_t *color)
   int x, y, t;
   assert(tags && color);
   
+  /* On parallélise les deux boucles, t est privé car il est le tag propre à chaque pixel */
   #pragma omp parallel for private(t, x) collapse(2)
   for (y = 0; y < tags->height; ++y)
   {
@@ -342,6 +355,12 @@ void ccl_draw_legend(image_t *color, int num_colors)
   }
 }
 
+/**
+* @brief Vérifie les limites des threads et créé de nouvelles équivalences entre les figures des threads
+* @param self the input image (binary)
+* @param tags the (output) image for storing pixel tags
+* @param equiv_out the table holding equivalence classes
+*/
 void ccl_join_lim_threads(
       const image_t *self,
       image_t *tags, 
@@ -353,19 +372,21 @@ void ccl_join_lim_threads(
   int tag = 0;
   int y = 0;
 
-  DEBUG("First step: assign temporary class tag");
+  DEBUG("Step: join limits between threads");
 
-    /* Detect background color */
+  /* On récupère la couleurs du fond */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
-  printf("\n\nnb_threads %d", atoi(getenv("OMP_NUM_THREADS")));
-
-  /* Loop over all image pixels */
+  /* On parcours les limites entre les threads seulement*/
   #pragma omp parallel for private(tag, y)
   for(int i = 0; i < atoi(getenv("OMP_NUM_THREADS"))-1; i++)
   {
-    y = tab_lim[i]+1; // en dessous de la frontière
+    /* On parcours le tableau de limites et on récupère la valeur +1 (car on vérifie le pixel au dessus
+    du pixel actuel) que l'on stocke dans y (on ne parcourt pas la dernière case du tableau 
+    car sa limite est la dernière ligne de l'image) */
+    y = tab_lim[i]+1;
 
+    /* On parcours la ligne de pixels à l'ordonnée y*/
     for (int x = 0; x < self->width; ++x)
     {
       /* read current pixel color */
@@ -374,20 +395,21 @@ void ccl_join_lim_threads(
       /* by default, pixel tag is zero (background) */
       tag = 0;
 
+      /* Si la case est noire nous n'avons pas besoin de créer d'équivalence */
       if (pxl_color != bg_color)
       {
-        /* Current pixel is foreground color: give it a tag, but which one? */
-
-        /* Read the tag (if any) of the North and West adjacent pixels */
+        /* Read the tag (if any) of the North adjacent pixels */
         /* or 0, if outside image coordinate ranges */
         int tag_n = image_coord_check(tags, x, y-1) ? 
               image_gs16_getpixel(tags, x, y-1).gs16 
               : 0;
 
-        // Retrouver le tag de la case actuelle
+        /* On récupère le tag de la case actuelle */
         tag = image_gs16_getpixel(tags, x, y).gs16;
 
-        // Exemple boucle tag
+        /* Si les tags des deux cases sont différents et ne valent pas zéro
+        alors on créé une équivalece entre les deux pixels qui se trouvent de part et 
+        d'autre de la limite */
         if (tag_n > 0 && tag > 0 && tag != tag_n)
         {
           /* if neighbors have different tags: join them */
@@ -397,6 +419,8 @@ void ccl_join_lim_threads(
     }
   }
 
+  // On libère le tableau de limites des threads 
+  // alloué dynamiquement dans la fonction ccl_temp_tags
   free(tab_lim);
 }
 
@@ -452,7 +476,8 @@ int image_connected_components(
   }
 #endif
 
-  ///////// JOIN THREADS ///////////////
+  DEBUG("Now join tags from limits of the threads");
+  /* Appel de la fonction qui va joindre les limites des threads */
   ccl_join_lim_threads(self, tags, equiv_table);
   
   /* ~~~~~~~~~~ Second step: reduce equivalence classes and renumber ~~~~~~~~~~ */

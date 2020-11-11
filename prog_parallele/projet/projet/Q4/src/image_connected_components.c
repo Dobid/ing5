@@ -99,7 +99,7 @@ int ccl_temp_tag(
 
   DEBUG("First step: assign temporary class tag");
 
-    /* Detect background color */
+  /* Detect background color */
   bg_color = image_bmp_getpixel(self, 0, 0).bit;
 
   /* Loop over all image pixels */
@@ -416,14 +416,14 @@ int image_connected_components(
   ccl_analyze(tags, con_cmp, num_cc);
 
   /* Write outputs */ 
-  // for (t = 0; t < num_cc; ++t)
-  // {
-  //   //printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
-  //       // t, 
-  //       // con_cmp[t].x1, con_cmp[t].y1,
-  //       // con_cmp[t].x2, con_cmp[t].y2,
-  //       // con_cmp[t].num_pixels);
-  // }
+  for (t = 0; t < num_cc; ++t)
+  {
+    printf("Connected component  #%03d: bounding box (%04d,%04d),(%04d,%04d), %06d pixels\n",
+        t, 
+        con_cmp[t].x1, con_cmp[t].y1,
+        con_cmp[t].x2, con_cmp[t].y2,
+        con_cmp[t].num_pixels);
+  }
 
   DEBUG("Draw color output");
   /* draw connected components as a color image */
